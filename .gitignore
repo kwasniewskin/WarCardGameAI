@@ -1,5 +1,5 @@
 # Ignore the API key file
-war_card_game/ApiKey.txt
+WarCardGameAI/war_card_game/ApiKey.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
