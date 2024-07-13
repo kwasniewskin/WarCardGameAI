@@ -15,7 +15,7 @@ exit_icon = pygame.image.load("assets/ui_elements/exit_icon.png")
 
 option_icon = pygame.transform.scale(option_icon, (50, 50))
 exit_icon = pygame.transform.scale(exit_icon, (50, 50))
-card_back = pygame.transform.scale(card_back, (100, 150))
+card_back = pygame.transform.scale(card_back, (112.5, 150))
 
 # Colors
 WHITE = (255, 255, 255)
