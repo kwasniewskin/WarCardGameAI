@@ -1,5 +1,6 @@
 # Ignore the API key file
-WarCardGameAI/war_card_game/ApiKey.txt
+WarCardGameAI/war_card_game/ApiKeyOpenAi.txt
+WarCardGameAI/war_card_game/ApiKeyLeonardoAi.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
