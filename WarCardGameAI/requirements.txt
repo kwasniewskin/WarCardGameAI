@@ -1,3 +1,5 @@
-openai
+openai~=1.35.10
 pygame
-requests
+requests~=2.32.3
+customtkinter~=5.2.2
+pillow~=10.4.0

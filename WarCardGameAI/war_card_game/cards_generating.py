@@ -4,8 +4,6 @@ import urllib.request
 from war_card_game.leonardoai_utils import generateImagesToEachCardLeonardoAI
 from war_card_game.openai_utils import generateCardsBasedOnGivenTheme, generateImagesToEachCardOpenAi
 
-themeGivenByUser = "Wiedzmin"
-
 
 # Generate cards based on the given theme, create images for them, and save the images to the assets folder.
 def generateCards(theme):
@@ -30,8 +28,3 @@ def saveCardsImagesToAssets(cards):
         urllib.request.urlretrieve(image_url, file_path)
         print(f"{card.id}. {card.name} generated and saved to {file_path}")
         print(f"Power: {card.power}, Description: {card.description}")
-
-
-cards = generateCards(themeGivenByUser)
-#print(cards)
-
