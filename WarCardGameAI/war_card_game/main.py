@@ -7,18 +7,51 @@ from custom_messagebox import show_custom_messagebox
 userTheme = ""
 
 
-def on_generate_cards(root, entry):
+def on_generate_cards(root, entry, loading_label):
     global userTheme
     userTheme = entry.get()
     if userTheme:
-        root.destroy()  # Close the input window
+        # Display loading animation and text
+        loading_label.configure(text="Generating required assets...")
+        entry.configure(state="disabled")
+        generate_button.configure(state="disabled")
+
+        # Load assets and start the game
+        root.after(100, load_assets_and_start_game, root)
     else:
         show_custom_messagebox(root, title="Input Required", message="Please enter a theme!")
 
 
-def main_game(user_theme):
-    game = Game(user_theme)
+def load_assets_and_start_game(root):
+    game = Game(userTheme)  # Initialize game and load assets
+    root.destroy()  # Close the input window
+    main_game(game)  # Start the main game
 
+
+def center_window(window, width, height):
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    window.geometry(f"{width}x{height}+{x}+{y - 20}")
+
+
+def animate_card_flip(label, new_image, duration=500):
+    def update_image(progress):
+        if progress < 0.5:
+            scale = 1 - 2 * progress
+        else:
+            label.configure(image=new_image)
+            scale = 2 * progress - 1
+        label.scale = scale
+        label.update()
+        if progress < 1:
+            label.after(int(duration / 20), update_image, progress + 0.05)
+
+    update_image(0)
+
+
+def main_game(game):
     # Initialize main game window
     game_window = ctk.CTk()
     game_window.title("War Card Game")
@@ -29,87 +62,53 @@ def main_game(user_theme):
 
     # Load assets
     image_path = "assets/ui_elements/card_back.png"
-    card_back_img = ctk.CTkImage(Image.open(image_path), size=(150, 250))
+    card_back_img = ctk.CTkImage(Image.open(image_path), size=(320, 480))
 
     # Main game frame
     game_frame = ctk.CTkFrame(game_window)
     game_frame.pack(fill="both", expand=True)
 
-    # Configure the grid to be equal size and not change width
-    for i in range(5):
+    for i in range(3):
         game_frame.columnconfigure(i, weight=1, minsize=100)
     for i in range(3):
         game_frame.rowconfigure(i, weight=1, minsize=100)
 
-    round_label = ctk.CTkLabel(game_frame, text=f"Round: {game.round}", font=("Helvetica", 24), text_color="white")
-    round_label.grid(row=0, column=1, sticky="n", padx=10, pady=(20, 0))
+    round_label = ctk.CTkLabel(game_frame, text=f"Round: {game.round}", font=("Helvetica", 32), text_color="white")
+    round_label.grid(row=0, column=1, sticky="n", padx=10, pady=(30, 0))
 
-    alert_label = ctk.CTkLabel(game_frame, text=f"{game.alert}", font=("Helvetica", 24), text_color="white", width=300, wraplength=280, anchor="center")
-    alert_label.grid(row=0, column=3, sticky="n", padx=10, pady=(20, 0))
+    alert_label = ctk.CTkLabel(game_frame, text=f"{game.alert}", font=("Helvetica", 32), text_color="white", width=300,
+                               wraplength=280, anchor="center")
+    alert_label.grid(row=1, column=1, sticky="ns", padx=10, pady=(20, 0))
 
-    opponent_deck_label = ctk.CTkLabel(game_frame, image=card_back_img, text='')
-    opponent_deck_label.grid(row=0, column=2, sticky="nsew", pady=0)
+    # Opponent frame
+    opponent_frame = ctk.CTkFrame(game_frame, fg_color='transparent')
+    opponent_frame.grid(row=0, column=0, sticky="s", pady=(20, 0))
 
-    player_deck_label = ctk.CTkLabel(game_frame, image=card_back_img, text='')
-    player_deck_label.grid(row=2, column=2, sticky="nsew", pady=0)
+    opponent_label = ctk.CTkLabel(opponent_frame, text="Opponent", font=("Helvetica", 32), text_color="white")
+    opponent_label.pack(anchor="n")
+    opponent_cards_left_label = ctk.CTkLabel(opponent_frame, text=f"Cards left: {game.opponent.deck.number_of_cards}",
+                                             font=("Helvetica", 24),
+                                             text_color="white")
+    opponent_cards_left_label.pack(anchor="center")
 
+    # Player frame
+    player_frame = ctk.CTkFrame(game_frame, fg_color='transparent')
+    player_frame.grid(row=0, column=2, sticky="s", pady=(20, 0))
+
+    player_label = ctk.CTkLabel(player_frame, text="Player", font=("Helvetica", 32), text_color="white")
+    player_label.pack(anchor="n")
+    player_cards_left_label = ctk.CTkLabel(player_frame, text=f"Cards left: {game.player.deck.number_of_cards}",
+                                           font=("Helvetica", 24),
+                                           text_color="white")
+    player_cards_left_label.pack(anchor="center")
+
+    # Opponent card placement
     opponent_card_label = ctk.CTkLabel(game_frame, image=card_back_img, text='')
-    opponent_card_label.grid(row=1, column=1, sticky="nsew", padx=0)
+    opponent_card_label.grid(row=1, column=0, sticky="nsew", pady=0)
 
-    player_card_label = ctk.CTkLabel(game_frame, image=card_back_img, text='')
-    player_card_label.grid(row=1, column=3, sticky="nsew", padx=0)
-
-    def next_round():
-        nonlocal game
-        game.play_round()
-
-        try:
-            player_card_image_path = f"assets/card_images/{game.player.active_card.id}.png"
-            player_card_image = ctk.CTkImage(Image.open(player_card_image_path), size=(150, 250))
-            player_card_label.configure(image=player_card_image)
-            player_card_name_label.configure(text=f"Name: {game.player.active_card.name}",
-                                             font=("Helvetica", 14, "bold"))
-            player_card_power_label.configure(text=f"Power: {game.player.active_card.power}",
-                                              font=("Helvetica", 14, "bold"))
-            player_card_description_label.configure(text=f"{game.player.active_card.description}",
-                                                    font=("Helvetica", 12), wraplength=150)
-        except Exception as e:
-            print(f"Error loading player card image: {e}")
-
-        try:
-            opponent_card_image_path = f"assets/card_images/{game.opponent.active_card.id}.png"
-            opponent_card_image = ctk.CTkImage(Image.open(opponent_card_image_path), size=(150, 250))
-            opponent_card_label.configure(image=opponent_card_image)
-            opponent_card_name_label.configure(text=f"Name: {game.opponent.active_card.name}",
-                                               font=("Helvetica", 14, "bold"))
-            opponent_card_power_label.configure(text=f"Power: {game.opponent.active_card.power}",
-                                                font=("Helvetica", 14, "bold"))
-            opponent_card_description_label.configure(text=f"{game.opponent.active_card.description}",
-                                                      font=("Helvetica", 12), wraplength=150)
-        except Exception as e:
-            print(f"Error loading opponent card image: {e}")
-
-        round_label.configure(text=f"Round: {game.round}")
-        alert_label.configure(text=f"{game.alert}")
-        if game.winner:
-            show_custom_messagebox(game_window, "Game Over",
-                                   f"{'Player' if game.winner == 'Player' else 'Opponent'} has no cards left. {game.winner} WINS the game!")
-
-    # Create a frame for player card details
-    player_card_frame = ctk.CTkFrame(game_frame, fg_color='transparent', width=200, height=150)
-    player_card_frame.grid(row=1, column=4, sticky="nsew")
-
-    player_card_name_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 14, "bold"), width=180)
-    player_card_name_label.pack(anchor="n")
-    player_card_power_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 14, "bold"), width=180)
-    player_card_power_label.pack(anchor="n", pady=(10, 0))
-    player_card_description_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 12), wraplength=150,
-                                                 width=180)
-    player_card_description_label.pack(anchor="n", pady=(10, 0))
-
-    # Create a frame for opponent card details
+    # Frame for opponent card details
     opponent_card_frame = ctk.CTkFrame(game_frame, fg_color='transparent', width=200, height=150)
-    opponent_card_frame.grid(row=1, column=0, sticky="nsew")
+    opponent_card_frame.grid(row=2, column=0, sticky="nsew")
 
     opponent_card_name_label = ctk.CTkLabel(opponent_card_frame, text="", font=("Helvetica", 14, "bold"), width=180)
     opponent_card_name_label.pack(anchor="n")
@@ -119,19 +118,64 @@ def main_game(user_theme):
                                                    width=180)
     opponent_card_description_label.pack(anchor="n", pady=(10, 0))
 
+    # Player card placement
+    player_card_label = ctk.CTkLabel(game_frame, image=card_back_img, text='')
+    player_card_label.grid(row=1, column=2, sticky="nsew", pady=0)
+
+    # Frame for player card details
+    player_card_frame = ctk.CTkFrame(game_frame, fg_color='transparent', width=200, height=150)
+    player_card_frame.grid(row=2, column=2, sticky="nsew")
+
+    player_card_name_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 14, "bold"), width=180)
+    player_card_name_label.pack(anchor="n")
+    player_card_power_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 14, "bold"), width=180)
+    player_card_power_label.pack(anchor="n", pady=(10, 0))
+    player_card_description_label = ctk.CTkLabel(player_card_frame, text="", font=("Helvetica", 12), wraplength=150,
+                                                 width=180)
+    player_card_description_label.pack(anchor="n", pady=(10, 0))
+
+    def next_round():
+        nonlocal game
+        game.play_round()
+
+        try:
+            # Player card image
+            player_card_image_path = f"assets/card_images/{game.player.active_card.id}.png"
+            player_card_image = ctk.CTkImage(Image.open(player_card_image_path), size=(320, 480))
+            animate_card_flip(player_card_label, player_card_image)
+            player_card_name_label.configure(text=f"Name: {game.player.active_card.name}",
+                                             font=("Helvetica", 20, "bold"))
+            player_card_power_label.configure(text=f"Power: {game.player.active_card.power}",
+                                              font=("Helvetica", 20, "bold"))
+            player_card_description_label.configure(text=f"{game.player.active_card.description}",
+                                                    font=("Helvetica", 14), wraplength=250)
+
+            # Opponent card image
+            opponent_card_image_path = f"assets/card_images/{game.opponent.active_card.id}.png"
+            opponent_card_image = ctk.CTkImage(Image.open(opponent_card_image_path), size=(320, 480))
+            animate_card_flip(opponent_card_label, opponent_card_image)
+            opponent_card_name_label.configure(text=f"Name: {game.opponent.active_card.name}",
+                                               font=("Helvetica", 20, "bold"))
+            opponent_card_power_label.configure(text=f"Power: {game.opponent.active_card.power}",
+                                                font=("Helvetica", 20, "bold"))
+            opponent_card_description_label.configure(text=f"{game.opponent.active_card.description}",
+                                                      font=("Helvetica", 14), wraplength=250)
+        except Exception as e:
+            print(f"Error loading opponent card image: {e}")
+
+        round_label.configure(text=f"Round: {game.round}")
+        alert_label.configure(text=f"{game.alert}")
+        opponent_cards_left_label.configure(text=f"Cards left: {game.opponent.deck.number_of_cards}")
+        player_cards_left_label.configure(text=f"Cards left: {game.player.deck.number_of_cards}")
+        if game.winner:
+            show_custom_messagebox(game_window, "Game Over",
+                                   f"{'Opponent' if game.winner == 'Player' else 'Player'} has no cards left. {game.winner} WINS the game!")
+
     next_round_button = ctk.CTkButton(game_frame, text="Next Round", font=("Helvetica", 18), command=next_round,
                                       width=200, height=100)
-    next_round_button.grid(row=2, column=4, sticky="n")
+    next_round_button.grid(row=2, column=1, sticky="n")
 
     game_window.mainloop()
-
-
-def center_window(window, width, height):
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    x = (screen_width - width) // 2
-    y = (screen_height - height) // 2
-    window.geometry(f"{width}x{height}+{x}+{y - 20}")
 
 
 def main():
@@ -156,16 +200,16 @@ def main():
     entry = ctk.CTkEntry(root, font=("Helvetica", 18), width=350, height=40)
     entry.pack(pady=(10, 10))
 
+    loading_label = ctk.CTkLabel(root, text="", font=("Helvetica", 16), text_color="white")
+    loading_label.pack(pady=(10, 10))
+
+    global generate_button
     generate_button = ctk.CTkButton(root, text="GENERATE CARDS", font=("Helvetica", 18),
-                                    command=lambda: on_generate_cards(root, entry), width=350, height=30)
+                                    command=lambda: on_generate_cards(root, entry, loading_label), width=350, height=30)
     generate_button.pack(pady=0)
 
     # Run the main application loop
     root.mainloop()
-
-    # Check if a theme was entered and start the game
-    if userTheme:
-        main_game(userTheme)
 
 
 if __name__ == "__main__":

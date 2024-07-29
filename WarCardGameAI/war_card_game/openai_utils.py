@@ -13,10 +13,10 @@ with open('CardsGeneratingPrompt.txt', 'r') as file:
 client = OpenAI(api_key=openai.api_key)
 
 
-# Generate card details based on the given theme using the GPT-3.5-Turbo model and convert the response to card objects
+# Generate card details based on the given theme using the gpt-4o-mini model and convert the response to card objects
 def generateCardsBasedOnGivenTheme(theme):
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",

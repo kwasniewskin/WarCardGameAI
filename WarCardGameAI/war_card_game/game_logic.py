@@ -18,23 +18,10 @@ class Player:
             self.deck.addCard(card)
 
 
-class Opponent:
-    def __init__(self, deck):
-        self.deck = deck
-        self.active_card = None
-
-    def play_card(self):
-        self.active_card = self.deck.deal()
-        return self.active_card
-
-    def win_cards(self, cards):
-        for card in cards:
-            self.deck.addCard(card)
-
-
 class Deck:
     def __init__(self, cards):
         self.cards = cards
+        self.number_of_cards = len(cards)
 
     def isDeckEmpty(self):
         return len(self.cards) == 0
@@ -45,6 +32,9 @@ class Deck:
 
     def addCard(self, card):
         self.cards.insert(0, card)
+
+    def updateNumberOfCards(self):
+        self.number_of_cards = len(self.cards)
 
 
 class Game:
@@ -58,7 +48,7 @@ class Game:
 
         self.all_cards = all_cards
         self.player = Player(Deck(player_cards))
-        self.opponent = Opponent(Deck(opponent_cards))
+        self.opponent = Player(Deck(opponent_cards))
         self.round = 0
         self.alert = ""
         self.winner = None
@@ -82,6 +72,9 @@ class Game:
         else:
             self.alert = "WAR!"
             self.war(player_card, opponent_card)
+
+        self.player.deck.updateNumberOfCards()
+        self.opponent.deck.updateNumberOfCards()
 
     def war(self, player_first_card, opponent_first_card):
 
