@@ -1,5 +1,4 @@
 import random
-
 from war_card_game.card import Card
 from war_card_game.cards_generating import generateCards
 
@@ -16,22 +15,26 @@ class Player:
     def win_cards(self, cards):
         for card in cards:
             self.deck.addCard(card)
+        self.deck.updateNumberOfCards()  # Ensure the number of cards is updated
 
 
 class Deck:
     def __init__(self, cards):
         self.cards = cards
-        self.number_of_cards = len(cards)
+        self.updateNumberOfCards()
 
     def isDeckEmpty(self):
         return len(self.cards) == 0
 
     def deal(self):
         if not self.isDeckEmpty():
-            return self.cards.pop()
+            card = self.cards.pop()
+            self.updateNumberOfCards()
+            return card
 
     def addCard(self, card):
         self.cards.insert(0, card)
+        self.updateNumberOfCards()
 
     def updateNumberOfCards(self):
         self.number_of_cards = len(self.cards)
@@ -77,7 +80,6 @@ class Game:
         self.opponent.deck.updateNumberOfCards()
 
     def war(self, player_first_card, opponent_first_card):
-
         if self.check_empty_deck():
             return
 

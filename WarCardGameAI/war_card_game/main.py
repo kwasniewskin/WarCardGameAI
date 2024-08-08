@@ -1,7 +1,8 @@
 import customtkinter as ctk
 from PIL import Image, ImageTk
 from game_logic import Game
-from custom_messagebox import show_custom_messagebox
+from custom_messagebox import show_custom_messagebox, show_custom_messagebox_with_retry
+import sys
 
 # Global variable to store user theme
 userTheme = ""
@@ -17,15 +18,26 @@ def on_generate_cards(root, entry, loading_label):
         generate_button.configure(state="disabled")
 
         # Load assets and start the game
-        root.after(100, load_assets_and_start_game, root)
+        root.after(100, load_assets_and_start_game, root, entry, loading_label)
     else:
         show_custom_messagebox(root, title="Input Required", message="Please enter a theme!")
 
 
-def load_assets_and_start_game(root):
-    game = Game(userTheme)  # Initialize game and load assets
-    root.destroy()  # Close the input window
-    main_game(game)  # Start the main game
+def load_assets_and_start_game(root, entry, loading_label):
+    try:
+        game = Game(userTheme)  # Initialize game and load assets
+        root.destroy()  # Close the input window
+        main_game(game)  # Start the main game
+    except Exception as e:
+        show_custom_messagebox_with_retry(root, "Error", f"An error occurred while generating the game assets: {e}",
+                                          lambda: retry_generate_cards(root, entry, loading_label), quit_program)
+
+
+def retry_generate_cards(root, entry, loading_label):
+    entry.configure(state="normal")
+    generate_button.configure(state="normal")
+    loading_label.configure(text="")
+    entry.delete(0, ctk.END)  # Clear the entry field
 
 
 def center_window(window, width, height):
@@ -161,7 +173,7 @@ def main_game(game):
             opponent_card_description_label.configure(text=f"{game.opponent.active_card.description}",
                                                       font=("Helvetica", 14), wraplength=250)
         except Exception as e:
-            print(f"Error loading opponent card image: {e}")
+            print(f"Error loading one of card images: {e}")
 
         round_label.configure(text=f"Round: {game.round}")
         alert_label.configure(text=f"{game.alert}")
@@ -176,6 +188,10 @@ def main_game(game):
     next_round_button.grid(row=2, column=1, sticky="n")
 
     game_window.mainloop()
+
+
+def quit_program():
+    sys.exit()
 
 
 def main():
