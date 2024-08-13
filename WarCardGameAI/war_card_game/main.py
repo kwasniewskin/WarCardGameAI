@@ -1,11 +1,44 @@
 import customtkinter as ctk
-from PIL import Image, ImageTk
+from PIL import Image
 from game_logic import Game
 from custom_messagebox import show_custom_messagebox, show_custom_messagebox_with_retry
 import sys
 
 # Global variable to store user theme
 userTheme = ""
+game_state = "normal"
+
+
+def Initialize_ask_theme_window():
+    # Initialize ask theme window
+    root = ctk.CTk()
+    root.title("War Card Game")
+    root.geometry("1000x800")
+
+    # Center the ask theme window
+    center_window(root, 1000, 800)
+
+    # Create and configure widgets
+    welcome_label = ctk.CTkLabel(root, text="Select theme of your game!", font=("Helvetica", 32), text_color="white")
+    welcome_label.pack(pady=(200, 10))
+
+    example_label = ctk.CTkLabel(root, text="For example: Harry Potter, Dragons, Witcher, Apocalypse and so on!",
+                                 font=("Helvetica", 16), text_color="white")
+    example_label.pack(pady=(0, 10))
+
+    entry = ctk.CTkEntry(root, font=("Helvetica", 18), width=350, height=40)
+    entry.pack(pady=(10, 10))
+
+    loading_label = ctk.CTkLabel(root, text="", font=("Helvetica", 16), text_color="white")
+    loading_label.pack(pady=(10, 10))
+
+    global generate_button
+    generate_button = ctk.CTkButton(root, text="GENERATE CARDS", font=("Helvetica", 18),
+                                    command=lambda: on_generate_cards(root, entry, loading_label), width=350, height=30)
+    generate_button.pack(pady=0)
+
+    # Run the main application loop
+    root.mainloop()
 
 
 def on_generate_cards(root, entry, loading_label):
@@ -40,6 +73,10 @@ def retry_generate_cards(root, entry, loading_label):
     entry.delete(0, ctk.END)  # Clear the entry field
 
 
+def quit_program():
+    sys.exit()
+
+
 def center_window(window, width, height):
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
@@ -64,6 +101,8 @@ def animate_card_flip(label, new_image, duration=500):
 
 
 def main_game(game):
+    # <editor-fold desc="window set up">
+
     # Initialize main game window
     game_window = ctk.CTk()
     game_window.title("War Card Game")
@@ -146,10 +185,8 @@ def main_game(game):
                                                  width=180)
     player_card_description_label.pack(anchor="n", pady=(10, 0))
 
-    def next_round():
-        nonlocal game
-        game.play_round()
-
+    # </editor-fold>
+    def update_ui_after_round():
         try:
             # Player card image
             player_card_image_path = f"assets/card_images/{game.player.active_card.id}.png"
@@ -179,6 +216,72 @@ def main_game(game):
         alert_label.configure(text=f"{game.alert}")
         opponent_cards_left_label.configure(text=f"Cards left: {game.opponent.deck.number_of_cards}")
         player_cards_left_label.configure(text=f"Cards left: {game.player.deck.number_of_cards}")
+
+    def update_ui_place_bonus_cards():
+        try:
+            # Player card image
+            player_card_image_path = f"assets/ui_elements/card_back.png"
+            player_card_image = ctk.CTkImage(Image.open(player_card_image_path), size=(320, 480))
+            animate_card_flip(player_card_label, player_card_image)
+            player_card_name_label.configure(text=f"Name: BONUS CARD",
+                                             font=("Helvetica", 20, "bold"))
+            player_card_power_label.configure(text=f"Power: ???",
+                                              font=("Helvetica", 20, "bold"))
+            player_card_description_label.configure(text=f"",
+                                                    font=("Helvetica", 14), wraplength=250)
+
+            # Opponent card image
+            opponent_card_image_path = f"assets/ui_elements/card_back.png"
+            opponent_card_image = ctk.CTkImage(Image.open(opponent_card_image_path), size=(320, 480))
+            animate_card_flip(opponent_card_label, opponent_card_image)
+            opponent_card_name_label.configure(text=f"Name: BONUS CARD",
+                                               font=("Helvetica", 20, "bold"))
+            opponent_card_power_label.configure(text=f"Power: ???",
+                                                font=("Helvetica", 20, "bold"))
+            opponent_card_description_label.configure(text=f"",
+                                                      font=("Helvetica", 14), wraplength=250)
+        except Exception as e:
+            print(f"Error loading one of card images: {e}")
+
+    def next_round():
+        nonlocal game
+        global game_state
+
+        if game_state == "normal":
+            result = game.play_round()
+
+            if result == "normal_player_win" or result == "normal_opponent_win":
+                update_ui_after_round()
+                game_state = "normal"
+                next_round_button.configure(text="Next Round")
+            elif result == "war_trigger":
+                game_state = "war_bonus"
+                update_ui_after_round()
+                alert_label.configure(text="WAR! Prepare to battle!")
+                next_round_button.configure(text="Place Bonus Cards")
+
+        elif game_state == "war_bonus":
+            result = game.war_step(1)
+            if result == "war_bonus_applied":
+                update_ui_place_bonus_cards()
+                game_state = "war_deciding"
+                alert_label.configure(text="Ready for the final showdown!")
+                next_round_button.configure(text="Reveal Deciding Cards")
+
+        elif game_state == "war_deciding":
+            result = game.war_step(2)
+            update_ui_after_round()
+            if result == "war_player_win":
+                alert_label.configure(text="Player wins the war!")
+                game_state = "normal"
+            elif result == "war_opponent_win":
+                alert_label.configure(text="Opponent wins the war!")
+                game_state = "normal"
+            elif result == "war_tie":
+                alert_label.configure(text="Another war is needed!")
+                game_state = "war_trigger"
+            next_round_button.configure(text="Next Round")
+
         if game.winner:
             show_custom_messagebox(game_window, "Game Over",
                                    f"{'Opponent' if game.winner == 'Player' else 'Player'} has no cards left. {game.winner} WINS the game!")
@@ -190,42 +293,9 @@ def main_game(game):
     game_window.mainloop()
 
 
-def quit_program():
-    sys.exit()
-
-
 def main():
     global userTheme
-
-    # Initialize main application window
-    root = ctk.CTk()
-    root.title("War Card Game")
-    root.geometry("1000x800")
-
-    # Center the main application window
-    center_window(root, 1000, 800)
-
-    # Create and configure widgets
-    welcome_label = ctk.CTkLabel(root, text="Select theme of your game!", font=("Helvetica", 32), text_color="white")
-    welcome_label.pack(pady=(200, 10))
-
-    example_label = ctk.CTkLabel(root, text="For example: Harry Potter, Dragons, Witcher, Apocalypse and so on!",
-                                 font=("Helvetica", 16), text_color="white")
-    example_label.pack(pady=(0, 10))
-
-    entry = ctk.CTkEntry(root, font=("Helvetica", 18), width=350, height=40)
-    entry.pack(pady=(10, 10))
-
-    loading_label = ctk.CTkLabel(root, text="", font=("Helvetica", 16), text_color="white")
-    loading_label.pack(pady=(10, 10))
-
-    global generate_button
-    generate_button = ctk.CTkButton(root, text="GENERATE CARDS", font=("Helvetica", 18),
-                                    command=lambda: on_generate_cards(root, entry, loading_label), width=350, height=30)
-    generate_button.pack(pady=0)
-
-    # Run the main application loop
-    root.mainloop()
+    Initialize_ask_theme_window()
 
 
 if __name__ == "__main__":

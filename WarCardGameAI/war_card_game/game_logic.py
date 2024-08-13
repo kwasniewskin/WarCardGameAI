@@ -1,5 +1,4 @@
 import random
-from war_card_game.card import Card
 from war_card_game.cards_generating import generateCards
 
 
@@ -31,6 +30,7 @@ class Deck:
             card = self.cards.pop()
             self.updateNumberOfCards()
             return card
+        return None
 
     def addCard(self, card):
         self.cards.insert(0, card)
@@ -52,6 +52,7 @@ class Game:
         self.all_cards = all_cards
         self.player = Player(Deck(player_cards))
         self.opponent = Player(Deck(opponent_cards))
+        self.current_war_cards = None
         self.round = 0
         self.alert = ""
         self.winner = None
@@ -60,61 +61,61 @@ class Game:
         self.alert = ""
         self.round += 1
 
-        if self.check_empty_deck():
-            return
-
         player_card = self.player.play_card()
         opponent_card = self.opponent.play_card()
+        if self.check_if_the_game_has_ended(player_card, opponent_card):
+            return
 
         if player_card.power > opponent_card.power:
             self.alert = "Player WON!"
             self.player.win_cards([player_card, opponent_card])
+            return "normal_player_win"
         elif player_card.power < opponent_card.power:
             self.alert = "Opponent WON!"
             self.opponent.win_cards([player_card, opponent_card])
+            return "normal_opponent_win"
         else:
             self.alert = "WAR!"
-            self.war(player_card, opponent_card)
+            self.current_war_cards = [player_card, opponent_card]
+            return "war_trigger"
 
-        self.player.deck.updateNumberOfCards()
-        self.opponent.deck.updateNumberOfCards()
+    def war_step(self, step):
+        if step == 1:
+            # Place the bonus cards
+            player_bonus_card = self.player.play_card()
+            opponent_bonus_card = self.opponent.play_card()
+            if self.check_if_the_game_has_ended(player_bonus_card, opponent_bonus_card):
+                return
+            self.current_war_cards += [player_bonus_card, opponent_bonus_card]
+            return "war_bonus_applied"
+        elif step == 2:
+            # Determine the winner
+            player_deciding_card = self.player.play_card()
+            opponent_deciding_card = self.opponent.play_card()
+            if self.check_if_the_game_has_ended(player_deciding_card, opponent_deciding_card):
+                return
+            self.player.active_card = player_deciding_card
+            self.opponent.active_card = opponent_deciding_card
+            self.current_war_cards += [player_deciding_card, opponent_deciding_card]
 
-    def war(self, player_first_card, opponent_first_card):
-        if self.check_empty_deck():
-            return
+            if player_deciding_card.power > opponent_deciding_card.power:
+                self.player.win_cards(self.current_war_cards)
+                return "war_player_win"
+            elif opponent_deciding_card.power > player_deciding_card.power:
+                self.opponent.win_cards(self.current_war_cards)
+                return "war_opponent_win"
+            else:
+                # Potentially trigger another war
+                #return "war_tie"
+                self.player.win_cards(self.current_war_cards)
+                return "war_player_win"
 
-        player_bonus_card = self.player.play_card()
-        opponent_bonus_card = self.opponent.play_card()
-
-        if self.check_empty_deck():
-            return
-
-        player_second_card = self.player.play_card()
-        opponent_second_card = self.opponent.play_card()
-
-        winner_deck = [
-            player_first_card, opponent_first_card,
-            player_bonus_card, opponent_bonus_card,
-            player_second_card, opponent_second_card
-        ]
-
-        if player_second_card.power > opponent_second_card.power:
-            self.alert = "Player WON a WAR!"
-            self.player.win_cards(winner_deck)
-        elif opponent_second_card.power > player_second_card.power:
-            self.alert = "Opponent WON a WAR!"
-            self.opponent.win_cards(winner_deck)
-        else:
-            self.alert = "ANOTHER WAR!"
-            self.war(player_second_card, opponent_second_card)
-
-    def check_empty_deck(self):
-        if self.player.deck.isDeckEmpty():
+    def check_if_the_game_has_ended(self, player_card, opponent_card):
+        if player_card is None:
             self.alert = "Opponent WINS the game!"
             self.winner = "Opponent"
             return True
-        if self.opponent.deck.isDeckEmpty():
+        if opponent_card is None:
             self.alert = "Player WINS the game!"
             self.winner = "Player"
             return True
-        return False
